@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سباق السيارات</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101522;color:white;font-family:Arial;text-align:center}
+h1{color:#00e5ff}
+.panel{background:#202b40;margin:12px;padding:15px;border-radius:15px}
+button,select,input{padding:12px;margin:5px;border:0;border-radius:9px;font-size:16px}
+button{background:#00bcd4;color:#00131a;font-weight:bold}
+canvas{width:100%;max-width:500px;background:#333;border:3px solid white;border-radius:12px}
+#status{color:#00ff9d}
+</style>
+</head>
+<body>
+<h1>🏁 سباق السيارات</h1>
+<div class="panel">
+<h3>اختر سيارتك</h3>
+<select id="car">
+<option>سيارة رياضية</option>
+<option>لامبورغيني</option>
+<option>فيراري</option>
+<option>نيسان</option>
+</select>
+<br>
+<label>لون السيارة:</label>
+<input type="color" id="color" value="#ff2222">
+<br>
+<label>تطوير المحرك:</label>
+<select id="engine">
+<option value="1">عادي</option>
+<option value="1.3">قوي</option>
+<option value="1.6">احترافي</option>
+</select>
+</div>
+
+<div class="panel">
+<h3>اللعب مع صديق</h3>
+<input id="room" placeholder="رقم الغرفة">
+<button onclick="createRoom()">إنشاء غرفة</button>
+<button onclick="joinRoom()">دخول غرفة</button>
+<p id="status">جاهز للسباق</p>
+</div>
+
+<div class="panel">
+<h3>🏎️ مضمار السباق</h3>
+<canvas id="game" width="360" height="550"></canvas>
+<h2 id="score">النقاط: 0</h2>
+<button onclick="start()">ابدأ السباق</button>
+<button onclick="accelerate()">🚀 تسارع</button>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let y=430, speed=0, score=0, running=false;
+let peer,conn;
+let opponentY=430;
+
+function createRoom(){
+ peer=new Peer();
+ peer.on("open",id=>{
+  document.getElementById("room").value=id;
+  document.getElementById("status").innerText="أرسل رقم الغرفة لصديقك";
+ });
+ peer.on("connection",c=>{
+  conn=c;
+  connected();
+ });
+}
+
+function joinRoom(){
+ const id=document.getElementById("room").value.trim();
+ if(!id)return alert("اكتب رقم الغرفة");
+ peer=new Peer();
+ peer.on("open",()=> {
+  conn=peer.connect(id);
+  conn.on("open",connected);
+ });
+}
+
+function connected(){
+ document.getElementById("status").innerText="تم الاتصال! استعد للسباق 🏁";
+ conn.on("data",data=>{
+  if(data.y!==undefined)opponentY=data.y;
+ });
+}
+
+function start(){
+ y=430;score=0;speed=0;running=true;
+ document.getElementById("score").innerText="النقاط: 0";
+ draw();
+}
+
+function accelerate(){
+ if(running)speed=Math.min(speed+1,12);
+}
+
+function drawCar(x,y,color){
+ ctx.fillStyle=color;
+ ctx.fillRect(x,y,38,70);
+ ctx.fillStyle="#111";
+ ctx.fillRect(x+5,y+12,28,18);
+ ctx.fillRect(x+5,y+43,28,16);
+ ctx.fillStyle="white";
+ ctx.fillRect(x+3,y+3,7,5);
+ ctx.fillRect(x+28,y+3,7,5);
+}
+
+function draw(){
+ if(!running)return;
+ ctx.clearRect(0,0,360,550);
+ ctx.fillStyle="#27833d";
+ ctx.fillRect(0,0,360,550);
+ ctx.fillStyle="#444";
+ ctx.fillRect(35,0,290,550);
+ ctx.strokeStyle="white";
+ ctx.setLineDash([30,25]);
+ ctx.lineWidth=5;
+ ctx.beginPath();
+ ctx.moveTo(180,0);
+ ctx.lineTo(180,550);
+ ctx.stroke();
+ ctx.setLineDash([]);
+ drawCar(90,y,document.getElementById("color").value);
+ drawCar(230,opponentY,"#2196ff");
+ y-=speed;
+ score+=Math.floor(speed/2);
+ document.getElementById("score").innerText="النقاط: "+score;
+ if(conn&&conn.open)conn.send({y:y});
+ if(y< -70){
+  running=false;
+  alert("🏆 انتهى السباق! نقاطك: "+score);
+  return;
+ }
+ requestAnimationFrame(draw);
+}
+</script>
+</body>
+</html>
